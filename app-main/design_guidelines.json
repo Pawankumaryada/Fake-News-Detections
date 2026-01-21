@@ -1,0 +1,138 @@
+{
+  "brand_identity": {
+    "name": "Veritas AI",
+    "tagline": "Deciphering Truth in the Age of Noise",
+    "archetype": "Swiss Editorial Tech",
+    "core_values": ["Authority", "Precision", "Transparency", "Neutrality"],
+    "emotional_tone": "The calm confidence of a veteran editor meets the precision of a forensic lab."
+  },
+  "typography": {
+    "headings": {
+      "family": "Playfair Display",
+      "weights": ["400", "600", "700"],
+      "usage": "Main headlines, section titles. Use tight tracking (-0.02em) for a crisp editorial look.",
+      "fallback": "serif"
+    },
+    "body": {
+      "family": "IBM Plex Sans",
+      "weights": ["300", "400", "500", "600"],
+      "usage": "UI elements, long-form text, navigation.",
+      "fallback": "sans-serif"
+    },
+    "data": {
+      "family": "JetBrains Mono",
+      "weights": ["400"],
+      "usage": "Credibility scores, timestamps, source URLs, raw data snippets.",
+      "fallback": "monospace"
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "name": "Deep Indigo",
+        "hex": "#0F172A",
+        "usage": "Primary buttons, active states, strong borders."
+      },
+      "background": {
+        "name": "Paper White",
+        "hex": "#F9F9F7",
+        "usage": "Main background. Avoid pure white #FFFFFF to reduce eye strain and mimic paper."
+      },
+      "surface": {
+        "name": "Clean Slate",
+        "hex": "#FFFFFF",
+        "usage": "Cards, input areas, modals."
+      },
+      "accent_danger": {
+        "name": "Signal Red",
+        "hex": "#EF4444",
+        "usage": "Fake news alerts, high bias indicators."
+      },
+      "accent_success": {
+        "name": "Verified Emerald",
+        "hex": "#10B981",
+        "usage": "Credible sources, verified facts."
+      },
+      "accent_highlight": {
+        "name": "Editor's Yellow",
+        "hex": "#FEF08A",
+        "usage": "Highlighting suspicious text segments (mimics a marker)."
+      }
+    },
+    "gradients": {
+      "scanning_beam": "linear-gradient(180deg, rgba(16, 185, 129, 0) 0%, rgba(16, 185, 129, 0.5) 50%, rgba(16, 185, 129, 0) 100%)"
+    }
+  },
+  "layout_strategy": {
+    "landing_page": {
+      "grid": "The Tetris Grid",
+      "description": "Asymmetric layout. Large serif headlines on the left, interactive 'Scanner' demo on the right.",
+      "spacing": "Generous. Use p-12 to p-24 for section padding."
+    },
+    "dashboard": {
+      "grid": "The Control Room",
+      "description": "Dense, data-heavy. Fixed sidebar, scrollable main content. 3-column grid for analysis results.",
+      "gap": "gap-6"
+    }
+  },
+  "components": {
+    "buttons": {
+      "style": "Sharp edges or slightly rounded (rounded-md). No pill shapes.",
+      "primary": "bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all",
+      "secondary": "border border-primary/20 bg-transparent hover:bg-primary/5 text-primary"
+    },
+    "cards": {
+      "style": "Flat, 1px border (border-slate-200). No heavy drop shadows. 'Paper' feel.",
+      "hover": "hover:border-primary/30 transition-colors duration-300"
+    },
+    "input_area": {
+      "style": "Massive text area. Minimalist. No border until focus. Feels like a clean sheet of paper.",
+      "focus": "ring-1 ring-primary/20"
+    },
+    "credibility_meter": {
+      "type": "Spectrum Slider",
+      "description": "A horizontal bar gradient from Red to Green. A 'needle' indicates the score. Do NOT use a donut chart."
+    }
+  },
+  "visual_enhancers": {
+    "textures": "Subtle grain overlay (opacity 0.03) on the background to give a tactile paper feel.",
+    "motion": {
+      "scanner": "A vertical line scanning down the text content during analysis.",
+      "highlight": "Text highlights should animate in like a marker stroke (width 0% -> 100%)."
+    }
+  },
+  "image_assets": {
+    "hero_bg": "https://images.unsplash.com/photo-1736195675963-8afff9103f49?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "journalist_context": "https://images.unsplash.com/photo-1686061594183-8c864f508b00?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "newspaper_texture": "https://images.unsplash.com/photo-1747071785559-4ee7dfa90c8d?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "abstract_network": "https://images.unsplash.com/photo-1664526936810-ec0856d31b92?crop=entropy&cs=srgb&fm=jpg&q=85"
+  },
+  "instructions_to_main_agent": [
+    "Use 'Playfair Display' ONLY for H1, H2, H3. Use 'IBM Plex Sans' for everything else.",
+    "Implement the 'Scanner' animation when the user submits text. It builds anticipation.",
+    "The 'Analysis Result' should look like a forensic report. Use lines, labels, and monospaced data.",
+    "Do not use generic 'Success/Error' toasts. Use 'Verification Complete' or 'Analysis Failed' with specific details.",
+    "Ensure the 'Highlighter' yellow is readable against the text color.",
+    "For the 'Credibility Score', use a scale of 0-100 with clear labels: 'Critical', 'Low', 'Moderate', 'High', 'Verified'."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯📚🎭🎬🎪🎉🎊🎁🎀🎂🍰🎈🎨🎰💰💵💳🏦💎🪙💸🤑📊📈📉💹🔢🏆🥇 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Create new components that match the style and conventions of existing components when needed",
+    "Examine existing components to understand the project's component patterns before creating new ones",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use 'sonner' for toasts. Sonner component are located in /app/src/components/ui/sonner.tsx"
+  ]
+}

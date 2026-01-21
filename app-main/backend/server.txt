@@ -1,0 +1,292 @@
+import os
+import json
+import uuid
+import re
+import logging
+import joblib
+import requests
+
+from pathlib import Path
+from datetime import datetime, timezone
+from typing import List, Optional
+
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+from groq import Groq
+from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi import FastAPI, APIRouter, HTTPException
+from starlette.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, ConfigDict
+
+# ================= LOGGING =================
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("veritas-ai")
+
+# ================= ENV =================
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / ".env")
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+MONGO_URL = os.getenv("MONGO_URL")
+DB_NAME = os.getenv("DB_NAME")
+
+if not GROQ_API_KEY:
+    raise RuntimeError("GROQ_API_KEY missing")
+
+# ================= DB =================
+client = AsyncIOMotorClient(MONGO_URL)
+db = client[DB_NAME]
+
+# ================= LOAD ML =================
+ML_DIR = ROOT_DIR / "ml"
+model = joblib.load(ML_DIR / "fake_news_model.pkl")
+vectorizer = joblib.load(ML_DIR / "vectorizer.pkl")
+logger.info("✅ ML model & vectorizer loaded")
+
+# ================= GROQ =================
+groq = Groq(api_key=GROQ_API_KEY)
+
+# ================= APP =================
+app = FastAPI(title="Veritas AI Backend")
+router = APIRouter(prefix="/api")
+
+# ================= MODELS =================
+class AnalysisResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    input_text: str
+    input_url: Optional[str] = None
+
+    ml_score: int
+    ml_label: str
+
+    ai_score: int
+    ai_label: str
+
+    final_score: int
+    final_label: str
+
+    bias_analysis: str
+    source_verification: str
+    fact_check_summary: str
+    key_claims: List[str]
+    red_flags: List[str]
+
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TextRequest(BaseModel):
+    text: str
+
+
+# ================= HELPERS =================
+def clean_text(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"http\S+", "", text)
+    text = re.sub(r"[^a-z\s]", "", text)
+    return text
+
+
+def normalize_list(items) -> List[str]:
+    if not isinstance(items, list):
+        return []
+    out = []
+    for item in items:
+        if isinstance(item, str):
+            out.append(item)
+        elif isinstance(item, dict):
+            c = item.get("claim")
+            v = item.get("verification")
+            if c and v:
+                out.append(f"{c} ({v})")
+            elif c:
+                out.append(c)
+    return out
+
+
+def analyze_with_ml(text: str):
+    vec = vectorizer.transform([clean_text(text)])
+    prob_real = model.predict_proba(vec)[0][1]
+    score = int(prob_real * 100)
+    label = "Real" if score >= 50 else "Fake"
+    return score, label
+
+
+# ================= AI ANALYSIS =================
+async def analyze_with_ai(text: str):
+    try:
+        prompt = f"""
+You are a STRICT FACT-CHECKING AI.
+
+Rules:
+- Check factual correctness ONLY.
+- Wrong role/title/date/location = FALSE.
+- Narendra Modi is PRIME MINISTER of India.
+- If ANY factual error → verdict MUST be FALSE.
+- If correct → verdict TRUE.
+
+Return ONLY JSON:
+
+{{
+  "credibility_score": 0-100,
+  "credibility_label": "Critical | Low | Moderate | High | Verified",
+  "verdict": "TRUE or FALSE",
+  "bias_analysis": "string",
+  "source_verification": "string",
+  "fact_check_summary": "string",
+  "key_claims": [{{"claim":"", "verification":""}}],
+  "red_flags": []
+}}
+
+STATEMENT:
+{text}
+"""
+
+        res = groq.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=700,
+        )
+
+        raw = res.choices[0].message.content.strip()
+        data = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
+
+        data["key_claims"] = normalize_list(data.get("key_claims", []))
+        data["red_flags"] = normalize_list(data.get("red_flags", []))
+
+        return data
+
+    except Exception as e:
+        logger.error(f"AI failed: {e}")
+        return {
+            "credibility_score": 30,
+            "credibility_label": "Low",
+            "verdict": "FALSE",
+            "bias_analysis": "AI unavailable",
+            "source_verification": "AI unavailable",
+            "fact_check_summary": "Verification failed",
+            "key_claims": [],
+            "red_flags": ["AI error"],
+        }
+
+
+# ================= SCORE NORMALIZATION (CRITICAL FIX) =================
+def normalize_ai_score(ai):
+    score = ai.get("credibility_score", 0)
+    verdict = ai.get("verdict", "FALSE")
+
+    if verdict == "TRUE" and score < 60:
+        return 80
+    if verdict == "FALSE" and score > 40:
+        return 20
+    return score
+
+
+def combine_scores(ml, ai):
+    final = int((ml * 0.4) + (ai * 0.6))
+    if final >= 85:
+        return final, "TRUE"
+    if final >= 60:
+        return final, "LIKELY TRUE"
+    if final >= 40:
+        return final, "UNCERTAIN"
+    return final, "FALSE"
+
+
+# ================= ROUTES =================
+@router.post("/analyze/text", response_model=AnalysisResult)
+async def analyze_text(req: TextRequest):
+    if len(req.text.strip()) < 5:
+        raise HTTPException(400, "Minimum 5 characters required")
+
+    ml_score, ml_label = analyze_with_ml(req.text)
+    ai = await analyze_with_ai(req.text)
+    ai_score = normalize_ai_score(ai)
+
+    final_score, final_label = combine_scores(ml_score, ai_score)
+
+    result = AnalysisResult(
+        input_text=req.text,
+        ml_score=ml_score,
+        ml_label=ml_label,
+        ai_score=ai_score,
+        ai_label=ai["credibility_label"],
+        final_score=final_score,
+        final_label=final_label,
+        bias_analysis=ai["bias_analysis"],
+        source_verification=ai["source_verification"],
+        fact_check_summary=ai["fact_check_summary"],
+        key_claims=ai["key_claims"],
+        red_flags=ai["red_flags"],
+    )
+
+    doc = result.model_dump()
+    doc["timestamp"] = doc["timestamp"].isoformat()
+    await db.analyses.insert_one(doc)
+    return result
+
+
+@router.post("/analyze/url", response_model=AnalysisResult)
+async def analyze_url(req: dict):
+    url = req.get("url")
+    if not url:
+        raise HTTPException(400, "URL required")
+
+    try:
+        html = requests.get(url, timeout=10).text
+        soup = BeautifulSoup(html, "html.parser")
+        text = " ".join(p.get_text() for p in soup.find_all("p"))
+    except Exception:
+        raise HTTPException(400, "Failed to fetch article")
+
+    ml_score, ml_label = analyze_with_ml(text)
+    ai = await analyze_with_ai(text)
+    ai_score = normalize_ai_score(ai)
+    final_score, final_label = combine_scores(ml_score, ai_score)
+
+    result = AnalysisResult(
+        input_text=text[:500],
+        input_url=url,
+        ml_score=ml_score,
+        ml_label=ml_label,
+        ai_score=ai_score,
+        ai_label=ai["credibility_label"],
+        final_score=final_score,
+        final_label=final_label,
+        bias_analysis=ai["bias_analysis"],
+        source_verification=ai["source_verification"],
+        fact_check_summary=ai["fact_check_summary"],
+        key_claims=ai["key_claims"],
+        red_flags=ai["red_flags"],
+    )
+
+    doc = result.model_dump()
+    doc["timestamp"] = doc["timestamp"].isoformat()
+    await db.analyses.insert_one(doc)
+    return result
+
+
+@router.get("/analysis/{analysis_id}", response_model=AnalysisResult)
+async def get_analysis(analysis_id: str):
+    doc = await db.analyses.find_one({"id": analysis_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Not found")
+    doc["timestamp"] = datetime.fromisoformat(doc["timestamp"])
+    return doc
+
+
+# ================= SETUP =================
+app.include_router(router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.on_event("shutdown")
+async def shutdown():
+    client.close()

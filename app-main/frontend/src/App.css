@@ -1,0 +1,76 @@
+/* Scanner animation */
+.scanner-line {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0) 0%, rgba(16, 185, 129, 0.5) 50%, rgba(16, 185, 129, 0) 100%);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+    animation: scan-line 2s ease-in-out infinite;
+}
+
+/* Credibility meter */
+.credibility-gradient {
+    background: linear-gradient(to right, #EF4444 0%, #F59E0B 25%, #FEF08A 50%, #84CC16 75%, #10B981 100%);
+}
+
+/* Highlight effect */
+.highlight-text {
+    position: relative;
+    display: inline-block;
+}
+
+.highlight-text::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 0;
+    height: 40%;
+    background-color: #FEF08A;
+    z-index: -1;
+    animation: highlight-stroke 0.3s ease-out forwards;
+}
+
+/* Card hover effects */
+.card-hover {
+    transition: border-color 0.3s ease, transform 0.2s ease;
+}
+
+.card-hover:hover {
+    border-color: rgba(15, 23, 42, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Button transitions */
+.btn-primary {
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+/* Text input focus */
+.input-focus {
+    transition: box-shadow 0.2s ease;
+}
+
+.input-focus:focus {
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+    outline: none;
+}
+
+/* Loading pulse */
+@keyframes pulse-slow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.pulse-slow {
+    animation: pulse-slow 2s ease-in-out infinite;
+}
+
