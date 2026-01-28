@@ -1,18 +1,15 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# =============================
+# FRONTEND (Node / React)
+# =============================
+node_modules/
+build/
+dist/
+.pnp
 .pnp.js
+coverage/
 
-# testing
-/coverage
-
-# production
-/build
-
-# misc
-.DS_Store
+# Frontend env
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -21,3 +18,34 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# =============================
+# BACKEND (Python)
+# =============================
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# =============================
+# DATASETS (VERY IMPORTANT)
+# =============================
+*.csv
+*.xlsx
+*.xls
+data/
+dataset/
+
+# =============================
+# ML MODELS / ARTIFACTS
+# =============================
+*.h5
+*.joblib
+*.ckpt
+
+# =============================
+# OS
+# =============================
+.DS_Store
+Thumbs.db

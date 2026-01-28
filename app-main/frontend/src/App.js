@@ -8,6 +8,8 @@ import History from "./pages/History";
 /* AUTH */
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import AdminRoute from "./routes/AdminRoute";
+
 
 /* PAGES */
 import Blogs from "./pages/Blogs";
@@ -118,13 +120,13 @@ export default function App() {
         />
 
         <Route
-          path="/admindashboard/:id"
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
+  path="/admin"
+  element={
+    <AdminRoute>
+      <AdminDashboard />
+    </AdminRoute>
+  }
+/>
 
         {/* OTHER PROTECTED ROUTES */}
         <Route

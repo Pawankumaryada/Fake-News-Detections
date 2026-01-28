@@ -1,13 +1,58 @@
-export default function AdminDashboard() {
-  return (
-    <div className="p-10 space-y-6">
-      <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+import { useEffect, useState } from "react";
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="card">Total Users: 124</div>
-        <div className="card">Total Analyses: 892</div>
-        <div className="card">AI Requests: 3,214</div>
+export default function AdminDashboard() {
+  const [stats, setStats] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setError("Not logged in");
+      return;
+    }
+
+    fetch("http://127.0.0.1:8000/admin/stats", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("Unauthorized");
+        }
+        return res.json();
+      })
+      .then(data => setStats(data.data))
+      .catch(() => setError("Access denied"));
+  }, []);
+
+  if (error) {
+    return <div className="text-red-500 p-10">{error}</div>;
+  }
+
+  if (!stats) {
+    return <div className="p-10 text-white">Loading admin data...</div>;
+  }
+
+  return (
+    <div className="p-10 text-white">
+      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+
+      <div className="grid grid-cols-3 gap-6">
+        <Card title="Users" value={stats.total_users} />
+        <Card title="Analyses" value={stats.total_analyses} />
+        <Card title="AI Requests" value={stats.ai_requests} />
       </div>
+    </div>
+  );
+}
+
+function Card({ title, value }) {
+  return (
+    <div className="bg-white/10 p-6 rounded-lg">
+      <p className="text-gray-400">{title}</p>
+      <h2 className="text-2xl font-bold">{value}</h2>
     </div>
   );
 }

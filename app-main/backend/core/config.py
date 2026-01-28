@@ -1,17 +1,45 @@
 import os
 import logging
-from pathlib import Path
 from dotenv import load_dotenv
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(ROOT_DIR / ".env")
+# Load .env file
+load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
+# -------------------------------------------------
+# LOGGING (ADD THIS)
+# -------------------------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s"
+)
+
 logger = logging.getLogger("veritas-ai")
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# -------------------------------------------------
+# DATABASE
+# -------------------------------------------------
+
 MONGO_URL = os.getenv("MONGO_URL")
 DB_NAME = os.getenv("DB_NAME")
 
-if not GROQ_API_KEY:
-    raise RuntimeError("GROQ_API_KEY missing")
+# -------------------------------------------------
+# CORS
+# -------------------------------------------------
+
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
+
+# -------------------------------------------------
+# AI / NEWS
+# -------------------------------------------------
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GNEWS_API_KEY = os.getenv("VITE_GNEWS_API_KEY")
+
+# -------------------------------------------------
+# FEEDBACK (EMAIL + WHATSAPP)
+# -------------------------------------------------
+
+FEEDBACK_EMAIL = os.getenv("FEEDBACK_EMAIL")
+EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
+WHATSAPP_NUMBER = os.getenv("WHATSAPP_NUMBER")

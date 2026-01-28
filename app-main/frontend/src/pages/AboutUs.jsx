@@ -1,7 +1,48 @@
 import React from 'react';
 import { Target, Users, BarChart3, Shield, Globe, Award, TrendingUp, Heart, CheckCircle, Brain, Zap, Lock, MessageSquare, Star, ThumbsUp, Quote } from 'lucide-react';
+import axios from "axios";
+import { useState } from "react";
+
+const API = "http://127.0.0.1:8000/api";
 
 const About = () => {
+
+  // 🔹 STEP 2: Feedback state (already added)
+  const [fbName, setFbName] = useState("");
+  const [fbCompany, setFbCompany] = useState("");
+  const [fbEmail, setFbEmail] = useState("");
+  const [fbRating, setFbRating] = useState(0);
+  const [fbMessage, setFbMessage] = useState("");
+  const [sending, setSending] = useState(false);
+
+  // 🔹 STEP 3: ADD THIS HERE (submit handler)
+  const submitFeedback = async (e) => {
+    e.preventDefault();
+    setSending(true);
+
+    try {
+      await axios.post("http://127.0.0.1:8000/api/feedback", {
+        name: fbName,
+        company: fbCompany,
+        email: fbEmail,
+        rating: fbRating,
+        message: fbMessage,
+      });
+
+      alert("✅ Feedback sent successfully!");
+
+      setFbName("");
+      setFbCompany("");
+      setFbEmail("");
+      setFbRating(0);
+      setFbMessage("");
+    } catch (err) {
+      alert("❌ Failed to send feedback");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const teamMembers = [
     {
       name: 'Manish',
@@ -269,11 +310,11 @@ const About = () => {
                 {/* Feedback Form */}
                 <div className="mt-8">
                   <h4 className="text-xl font-bold text-gray-900 mb-6 text-center">Share Your Experience</h4>
-                  <form className="space-y-4">
+                  <form className="space-y-4" onSubmit={submitFeedback}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <input
                         type="text"
-                        placeholder="Your Name"
+                        placeholder=" Name"
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                       <input
@@ -282,6 +323,14 @@ const About = () => {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                     </div>
+                    <input
+                      type="email"
+                      placeholder="Email Address"
+                      value={fbEmail}
+                      onChange={(e) => setFbEmail(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+/>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <input
                         type="email"
@@ -291,24 +340,44 @@ const About = () => {
                       <div className="flex items-center space-x-2">
                         <span className="text-gray-700">Rating:</span>
                         <div className="flex">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star key={star} className="w-5 h-5 text-gray-300 hover:text-yellow-400 cursor-pointer" />
-                          ))}
+                          {[1,2,3,4,5].map((star) => (<Star
+                           key={star}
+                           onClick={() => setFbRating(star)}
+                          className={`w-5 h-5 cursor-pointer ${
+                           star <= fbRating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+                        }`}
+                        />
+                        ))}
+
                         </div>
                       </div>
                     </div>
                     <textarea
                       placeholder="Your feedback about Veritas AI..."
                       rows="4"
+                      value={fbMessage}
+                      onChange={(e) => setFbMessage(e.target.value)}
+                      required
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                     <button
-                      type="submit"
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2"
-                    >
-                      <MessageSquare className="w-5 h-5" />
-                      <span>Submit Feedback</span>
-                    </button>
+  type="submit"
+  disabled={sending}
+  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg"
+>
+  {sending ? "Sending..." : "Submit Feedback"}
+</button>
+                    <a
+  href={`https://wa.me/919905843993?text=${encodeURIComponent(
+    `Feedback for Veritas AI\n\nName: ${fbName}\nCompany: ${fbCompany}\nEmail: ${fbEmail}\nRating: ${fbRating}/5\n\n${fbMessage}`
+  )}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="block text-center text-green-600 font-semibold mt-2"
+>
+  Send via WhatsApp
+</a>
+
                   </form>
                 </div>
               </div>

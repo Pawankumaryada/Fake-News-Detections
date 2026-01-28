@@ -1,30 +1,29 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { toast } from "sonner";
-import "../index.css";
 
 import {
   ArrowLeft,
-  Share2,
-  ExternalLink,
-  CheckCircle2,
   AlertTriangle,
+  CheckCircle2,
+  HelpCircle,
   Info,
   XCircle,
-  HelpCircle,
+  ExternalLink,
 } from "lucide-react";
-
-import { Button } from "../components/ui/button";
 
 const API = "http://127.0.0.1:8000/api";
 
-/* ---------------- SAFE HELPERS ---------------- */
-const safeString = (v, fallback = "N/A") =>
-  typeof v === "string" && v.trim() ? v : fallback;
+/* ---------------- VERDICT UI MAP ---------------- */
 
-const safeNumber = (v, fallback = 0) =>
-  typeof v === "number" && !isNaN(v) ? v : fallback;
+const verdictStyles = {
+  TRUE: { color: "bg-green-600", icon: <CheckCircle2 size={22} /> },
+  FALSE: { color: "bg-red-600", icon: <XCircle size={22} /> },
+  "LIKELY TRUE": { color: "bg-lime-600", icon: <CheckCircle2 size={22} /> },
+  UNVERIFIED: { color: "bg-yellow-500", icon: <AlertTriangle size={22} /> },
+  OPINION: { color: "bg-blue-500", icon: <Info size={22} /> },
+  PREDICTION: { color: "bg-purple-500", icon: <HelpCircle size={22} /> },
+};
 
 export default function Analysis() {
   const { id } = useParams();
@@ -34,35 +33,27 @@ export default function Analysis() {
   const [loading, setLoading] = useState(true);
 
   /* ---------------- FETCH ANALYSIS ---------------- */
+
   useEffect(() => {
-    if (id) fetchAnalysis();
+    if (!id) return;
+    fetchAnalysis();
     // eslint-disable-next-line
   }, [id]);
 
   const fetchAnalysis = async () => {
     try {
-      const res = await axios.get(`${API}/analysis/${id}`);
+      const res = await axios.get(`${API}/analyze/${id}`);
       setAnalysis(res.data);
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to load analysis");
+      console.error("Analysis fetch failed:", err);
       navigate("/");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ---------------- SHARE ---------------- */
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied");
-    } catch {
-      toast.error("Copy failed");
-    }
-  };
+  /* ---------------- STATES ---------------- */
 
-  /* ---------------- LOADING ---------------- */
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -74,173 +65,148 @@ export default function Analysis() {
   if (!analysis) {
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-500">
-        Analysis not available
+        Analysis not found
       </div>
     );
   }
 
-  /* ---------------- BACKEND AUTHORITY ---------------- */
-  const verdict = safeString(analysis.verdict).toUpperCase();
-  const confidence = safeNumber(analysis.confidence);
+  const verdictUI =
+    verdictStyles[analysis.final_label] || verdictStyles.UNVERIFIED;
 
-const fakeSignals = safeNumber(analysis.breakdown?.fake_signals);
-const realSignals = safeNumber(analysis.breakdown?.real_signals);
-
-let fakePercent = 0;
-let realPercent = 0;
-
-if (analysis.verdict === "UNVERIFIED") {
-  // Neutral visualization for uncertainty
-  fakePercent = 50;
-  realPercent = 50;
-} else {
-  const total = fakeSignals + realSignals || 1;
-  fakePercent = Math.round((fakeSignals / total) * 100);
-  realPercent = 100 - fakePercent;
-}
-
-
-  /* ---------------- UI HELPERS ---------------- */
-  const verdictColor =
-    verdict === "TRUE"
-      ? "bg-green-600"
-      : verdict === "FALSE"
-      ? "bg-red-600"
-      : "bg-yellow-500";
-
-  const verdictIcon =
-    verdict === "TRUE" ? "✅" : verdict === "FALSE" ? "❌" : "⚠️";
+  /* ---------------- UI ---------------- */
 
   return (
     <div className="min-h-screen bg-slate-50">
       {/* HEADER */}
-      <header className="border-b bg-white sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Button variant="ghost" onClick={() => navigate("/")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-
-          <h1 className="text-2xl font-bold">Veritas AI</h1>
-
-          <Button variant="outline" onClick={handleShare}>
-            <Share2 className="w-4 h-4 mr-2" />
-            Share
-          </Button>
+      <header className="bg-white border-b sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2 text-sm text-slate-600 hover:text-black"
+          >
+            <ArrowLeft size={16} /> Back
+          </button>
+          <h1 className="text-xl font-bold mx-auto">
+            Veritas AI – Fact Check
+          </h1>
         </div>
       </header>
 
       {/* CONTENT */}
-      <div className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+      <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+        {/* CLAIM */}
+        <div className="bg-white border rounded p-5">
+          <h3 className="font-semibold mb-2">Claim</h3>
+          <p className="text-slate-700">{analysis.input_text}</p>
+        </div>
+
         {/* VERDICT */}
-        <div className="text-center space-y-4">
-          <h2 className="text-3xl font-bold">Verdict</h2>
-
+        <div className="text-center space-y-2">
           <div
-            className={`inline-block px-10 py-4 text-white text-xl font-bold rounded ${verdictColor}`}
+            className={`inline-flex items-center gap-2 px-8 py-4 text-white rounded-lg text-xl font-bold ${verdictUI.color}`}
           >
-            {verdictIcon} {verdict}
+            {verdictUI.icon}
+            {analysis.final_label}
           </div>
-
-          <p className="text-slate-600 text-sm">
-            Based on ML + AI + source verification
+          <p className="text-sm text-slate-600">
+            Claim type: <b>{analysis.claim_type}</b>
           </p>
         </div>
 
-        {/* CONFIDENCE BAR */}
-        <div className="bg-white border rounded-lg p-6">
-          <h3 className="font-semibold mb-3">Confidence Score</h3>
-          <div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden">
+        {/* EXPLANATION */}
+        {analysis.explanation && (
+          <div className="bg-white border rounded p-6">
+            <h3 className="font-semibold mb-2">Why is this the verdict?</h3>
+            <p className="text-slate-700">{analysis.explanation}</p>
+          </div>
+        )}
+
+        {/* HIGHLIGHT */}
+        {analysis.highlighted_text && (
+          <div className="border border-red-300 bg-red-50 p-4 rounded">
+            <p className="text-red-800 text-sm">
+              ❌ Incorrect phrase detected:{" "}
+              <b>{analysis.highlighted_text}</b>
+            </p>
+          </div>
+        )}
+
+        {/* CONFIDENCE */}
+        <div className="bg-white border rounded p-6">
+          <h3 className="font-semibold mb-3">Confidence Breakdown</h3>
+
+          <div className="w-full bg-slate-200 rounded h-3 overflow-hidden">
             <div
-              className="h-4 bg-blue-600"
-              style={{ width: `${confidence}%` }}
+              className="h-3 bg-blue-600"
+              style={{ width: `${analysis.final_score || 0}%` }}
             />
           </div>
-          <p className="text-sm mt-2 text-slate-600">{confidence}% confidence</p>
+
+          <p className="text-sm mt-2 text-slate-600">
+            Final confidence: {analysis.final_score || 0}%
+          </p>
+
+          {analysis.confidence_breakdown && (
+            <ul className="mt-4 text-sm space-y-1 text-slate-700">
+              <li>
+                Wikipedia match:{" "}
+                {analysis.confidence_breakdown.wikipedia_match ? "Yes" : "No"}
+              </li>
+              <li>
+                News confirmations:{" "}
+                {analysis.confidence_breakdown.news_confirmation}
+              </li>
+              <li>
+                Contradiction found:{" "}
+                {analysis.confidence_breakdown.contradiction_found
+                  ? "Yes"
+                  : "No"}
+              </li>
+            </ul>
+          )}
         </div>
 
-        {/* ML vs AI BREAKDOWN */}
-        <div className="bg-white border rounded-lg p-6 space-y-4">
-          <h3 className="font-semibold">ML vs AI Signal Breakdown</h3>
+        {/* SOURCES */}
+        {analysis.ranked_sources?.length > 0 && (
+          <div className="bg-white border rounded p-6">
+            <h3 className="font-semibold mb-3">Verified Sources</h3>
 
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span>Real Signals (ML / AI)</span>
-              <span>{realPercent}%</span>
-            </div>
-            <div className="w-full bg-slate-200 h-3 rounded">
-              <div
-                className="h-3 bg-green-600 rounded"
-                style={{ width: `${realPercent}%` }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span>Fake Signals</span>
-              <span>{fakePercent}%</span>
-            </div>
-            <div className="w-full bg-slate-200 h-3 rounded">
-              <div
-                className="h-3 bg-red-600 rounded"
-                style={{ width: `${fakePercent}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* UNVERIFIED EXPLANATION */}
-        {verdict === "UNVERIFIED" && (
-          <div className="border border-yellow-300 bg-yellow-50 rounded-lg p-6">
-            <div className="flex items-center gap-2 mb-2">
-              <HelpCircle className="text-yellow-600" />
-              <h3 className="font-semibold text-yellow-800">
-                Why is this Unverified?
-              </h3>
-            </div>
-            <p className="text-sm text-yellow-700">
-              The system did not find enough reliable evidence to confidently
-              classify this content as true or false. This may happen when
-              trusted sources are missing, signals are balanced, or the claim is
-              too recent. Manual verification is recommended.
-            </p>
+            <ul className="space-y-2">
+              {analysis.ranked_sources.map((s, i) => (
+                <li
+                  key={i}
+                  className="flex justify-between items-center text-sm"
+                >
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 underline flex items-center gap-1"
+                  >
+                    <ExternalLink size={14} />
+                    {s.url}
+                  </a>
+                  <span className="text-slate-500">
+                    Trust: {s.trust_score}%
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
-        {/* FALSE EXPLANATION */}
-        {verdict === "FALSE" && (
-          <div className="border border-red-200 bg-red-50 rounded-lg p-6">
-            <div className="flex items-center gap-2 mb-2">
-              <XCircle className="text-red-600" />
-              <h3 className="font-semibold text-red-800">
-                AI Analysis Summary
-              </h3>
-            </div>
-            <p className="text-sm text-red-700">
-              This content shows strong indicators of misinformation, misleading
-              claims, or unreliable sourcing. Please verify using trusted
-              fact-checking platforms before sharing.
-            </p>
+        {/* WIKIDATA */}
+        {analysis.wikidata_id && (
+          <div className="text-center text-xs text-slate-500">
+            Wikidata ID: {analysis.wikidata_id}
           </div>
         )}
-
-        {/* WIKIPEDIA BADGE */}
-        <div className="bg-white border rounded-lg p-6 flex items-center gap-3">
-          <Info className="text-blue-600" />
-          <span className="text-sm">
-            Cross-referenced with public knowledge sources (e.g. Wikipedia)
-          </span>
-          <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded">
-            Wikipedia Verified
-          </span>
-        </div>
 
         {/* TIMESTAMP */}
-        <div className="text-center text-xs text-slate-500">
+        <div className="text-center text-xs text-slate-400">
           {new Date(analysis.timestamp).toLocaleString()}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
