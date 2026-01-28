@@ -1,6 +1,6 @@
 import json
 from groq import Groq
-from core.config import GROQ_API_KEY, logger
+from backend.core.config import GROQ_API_KEY, logger
 
 groq = Groq(api_key=GROQ_API_KEY)
 
