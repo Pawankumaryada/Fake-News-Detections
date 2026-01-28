@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes.analyze import router as analyze_router
-from routes.auth import router as auth_router
-from routes.trending import router as trending_router
-from routes.admin import router as admin_router
-from routes.history import router as history_router
-from routes.feedback import router as feedback_router
-from routes.facts import router as facts_router
+from backend.routes.analyze import router as analyze_router
+from backend.routes.auth import router as auth_router
+from backend.routes.trending import router as trending_router
+from backend.routes.admin import router as admin_router
+from backend.routes.history import router as history_router
+from backend.routes.feedback import router as feedback_router
+from backend.routes.facts import router as facts_router
+
 
 app = FastAPI(
     title="Veritas AI Backend",
