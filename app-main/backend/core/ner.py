@@ -1,16 +1,11 @@
 import spacy
 
-nlp = spacy.load("en_core_web_sm")
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    # Fallback if model is not available (Render-safe)
+    nlp = spacy.blank("en")
 
 def extract_entities(text: str):
     doc = nlp(text)
-    entities = []
-
-    for ent in doc.ents:
-        if ent.label_ in ["PERSON", "ORG", "GPE"]:
-            entities.append({
-                "text": ent.text,
-                "label": ent.label_
-            })
-
-    return entities
+    return [(ent.text, ent.label_) for ent in doc.ents]
