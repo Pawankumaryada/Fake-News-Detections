@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from core.database import analyses
+from backend.core.database import analyses
 
 router = APIRouter(prefix="/history", tags=["History"])
 
