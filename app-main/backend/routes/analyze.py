@@ -6,16 +6,16 @@ from typing import List, Optional, Dict
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, ConfigDict
 
-from core.database import analyses
-from core.config import GNEWS_API_KEY
-from core.ner import extract_entities
-from core.wikidata import get_wikidata_id
-from core.highlight import highlight_incorrect_phrase
-from core.confidence import confidence_breakdown
-from core.source_rank import rank_sources
+from backend.core.database import analyses
+from backend.core.config import GNEWS_API_KEY
+from backend.core.ner import extract_entities
+from backend.core.wikidata import get_wikidata_id
+from backend.core.highlight import highlight_incorrect_phrase
+from backend.core.confidence import confidence_breakdown
+from backend.core.source_rank import rank_sources
 
-from core.ml import analyze_with_ml
-from core.ai import analyze_with_ai
+from backend.core.ml import analyze_with_ml
+from backend.core.ai import analyze_with_ai
 
 router = APIRouter(prefix="/analyze", tags=["Analyze"])
 
