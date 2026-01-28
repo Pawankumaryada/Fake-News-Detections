@@ -1,7 +1,7 @@
 import re
 import joblib
 from pathlib import Path
-from core.config import logger
+from backend.core.config import logger
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 ML_DIR = ROOT_DIR / "ml"
