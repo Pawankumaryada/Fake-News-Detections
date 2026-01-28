@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
 
-from core.database import users
+from backend.core.database import users
 from auth.password import hash_password, verify_password
 from auth.jwt import create_token
 
