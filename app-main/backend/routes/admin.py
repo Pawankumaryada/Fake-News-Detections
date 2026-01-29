@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from auth.deps import get_current_user
+from backend.auth.deps import get_current_user
+
 
 router = APIRouter(
     prefix="/admin",
