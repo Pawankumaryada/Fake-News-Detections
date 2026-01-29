@@ -26,7 +26,7 @@ export default function NewsTicker() {
         setError(null);
         
         // Get API key from environment variables
-        const apiKey = import.meta.env.VITE_NEWSDATA_API_KEY;
+        const API_KEY = process.env.REACT_APP_NEWSDATA_API_KEY;
         
         if (!apiKey || apiKey === "your_newsdata_api_key_here") {
           throw new Error("Please add your NewsData.io API key to .env file");
