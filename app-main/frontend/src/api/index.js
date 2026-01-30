@@ -8,5 +8,5 @@ const api = axios.create({
 
 export default api;
 
-/* ✅ NAMED EXPORTS (CRITICAL) */
+/* ✅ EXPLICIT EXPORTS (REQUIRED FOR VERCEL) */
 export { analyzeText, getAnalysisById } from "./text";
