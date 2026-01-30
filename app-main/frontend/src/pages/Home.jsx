@@ -50,7 +50,6 @@ export default function Home() {
   const [stats, setStats] = useState({ analyses: 12547, accuracy: 96.2, claims: 8923 });
 
   /* ---------------- TRENDING ---------------- */
-/* ---------------- TRENDING ---------------- */
 useEffect(() => {
   const fetchTrending = async () => {
     try {
@@ -85,7 +84,7 @@ const handleAnalyzeText = async () => {
   try {
     const result = await analyzeText(text);
     navigate(`/analysis/${result.id}`);
-  } catch (e) {
+  } catch {
     toast.error("Analysis failed");
   } finally {
     setLoading(false);
