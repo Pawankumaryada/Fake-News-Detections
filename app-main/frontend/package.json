@@ -2,6 +2,9 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+
+  "proxy": "https://fake-news-backend-xom8.onrender.com",
+
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-accordion": "^1.2.8",
@@ -59,11 +62,13 @@
     "video.js": "^8.23.4",
     "zod": "^3.24.4"
   },
+
   "scripts": {
     "start": "craco start",
     "build": "craco build",
     "test": "craco test"
   },
+
   "browserslist": {
     "production": [
       ">0.2%",
@@ -76,6 +81,7 @@
       "last 1 safari version"
     ]
   },
+
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@craco/craco": "^7.1.0",
@@ -89,8 +95,4 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17"
   }
-}
-{
-  "proxy": "https://fake-news-backend-xom8.onrender.com"
- 
 }
