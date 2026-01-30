@@ -12,7 +12,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    fetch("http://127.0.0.1:8000/admin/stats", {
+    fetch("https://fake-news-backend-xom8.onrender.com/admin/stats", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
