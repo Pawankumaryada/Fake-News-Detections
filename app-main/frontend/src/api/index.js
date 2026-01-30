@@ -12,7 +12,7 @@ export async function analyzeText(text) {
   return res.data;
 }
 
-/* ================= FETCH RESULT BY ID ================= */
+/* ================= FETCH RESULT ================= */
 export async function getAnalysisById(id) {
   const res = await api.get(`/api/analyze/${id}`);
   return res.data;
