@@ -49,7 +49,7 @@ class TextRequest(BaseModel):
 
 
 # -------------------------------------------------
-# CLAIM TYPE CLASSIFIER
+# HELPERS
 # -------------------------------------------------
 
 def classify_claim_type(text: str) -> str:
@@ -67,10 +67,6 @@ def classify_claim_type(text: str) -> str:
     return "UNKNOWN"
 
 
-# -------------------------------------------------
-# ROLE EXTRACTION
-# -------------------------------------------------
-
 def extract_claimed_role(text: str) -> Optional[str]:
     roles = [
         "cricketer",
@@ -79,7 +75,7 @@ def extract_claimed_role(text: str) -> Optional[str]:
         "prime minister",
         "chief minister",
         "president",
-        "governor"
+        "governor",
     ]
 
     t = text.lower()
@@ -89,10 +85,6 @@ def extract_claimed_role(text: str) -> Optional[str]:
 
     return None
 
-
-# -------------------------------------------------
-# WIKIPEDIA FACTS
-# -------------------------------------------------
 
 def wikipedia_fact(entity: Optional[str]):
     if not entity:
@@ -108,15 +100,11 @@ def wikipedia_fact(entity: Optional[str]):
         data = res.json()
         return {
             "description": data.get("description", ""),
-            "url": data.get("content_urls", {}).get("desktop", {}).get("page")
+            "url": data.get("content_urls", {}).get("desktop", {}).get("page"),
         }
     except Exception:
         return None
 
-
-# -------------------------------------------------
-# GNEWS
-# -------------------------------------------------
 
 def gnews_fact(query: str):
     try:
@@ -126,24 +114,19 @@ def gnews_fact(query: str):
                 "q": query,
                 "token": GNEWS_API_KEY,
                 "lang": "en",
-                "max": 3
+                "max": 3,
             },
-            timeout=5
+            timeout=5,
         )
 
         if res.status_code != 200:
             return []
 
-        data = res.json()
-        return [a["url"] for a in data.get("articles", [])]
+        return [a["url"] for a in res.json().get("articles", [])]
 
     except Exception:
         return []
 
-
-# -------------------------------------------------
-# CONTRADICTION LOGIC
-# -------------------------------------------------
 
 def contradiction(claimed_role: Optional[str], wiki_desc: str):
     if not claimed_role or not wiki_desc:
@@ -176,67 +159,54 @@ async def analyze_text(req: TextRequest):
     if len(req.text.strip()) < 5:
         raise HTTPException(400, "Text too short")
 
+    # SAFE DEFAULTS
+    ml_score = 0
+    ml_label = "UNKNOWN"
+    ai_result = {
+        "verdict": "UNVERIFIED",
+        "credibility_score": 50,
+        "credibility_label": "SKIPPED",
+        "red_flags": [],
+    }
+
     claim_type = classify_claim_type(req.text)
 
-    # -------- ENTITY EXTRACTION --------
+    # ENTITY EXTRACTION (FIXED)
     entities = extract_entities(req.text)
-    main_entity = entities[0]["text"] if entities else None
+    main_entity = entities[0][0] if entities else None
 
-    # -------- ROLE EXTRACTION --------
     claimed_role = extract_claimed_role(req.text)
 
-    # -------- SOURCES --------
     wiki = wikipedia_fact(main_entity)
     news = gnews_fact(req.text)
     wikidata = get_wikidata_id(main_entity) if main_entity else None
 
     sources: List[str] = []
-    explanation: Optional[str] = None
+    explanation = None
     verdict = "UNVERIFIED"
-
-    ml_score = 0
-    ml_label = "UNKNOWN"
-
-    ai_result = {
-        "verdict": "UNVERIFIED",
-        "credibility_score": 50,
-        "credibility_label": "SKIPPED",
-        "red_flags": []
-    }
-
-    # -------------------------------------------------
-    # DECISION ENGINE
-    # -------------------------------------------------
 
     if claim_type == "OPINION":
         verdict = "OPINION"
         explanation = "Opinions cannot be fact-checked."
 
     elif claim_type == "PREDICTION":
-        verdict = "UNVERIFIED"
         explanation = "Predictions cannot be verified until the event occurs."
 
     elif claim_type == "FACT":
 
-        # -------- ML --------
         ml_score, ml_label = analyze_with_ml(req.text)
 
-        # -------- AI (SAFE + TIMEOUT) --------
         try:
             ai_result = await asyncio.wait_for(
                 asyncio.to_thread(analyze_with_ai, req.text),
-                timeout=8
+                timeout=8,
             )
-
-            if not isinstance(ai_result, dict):
-                raise ValueError("Invalid AI response")
-
         except Exception as e:
             print("⚠️ AI skipped:", e)
 
         contradiction_reason = contradiction(
             claimed_role,
-            wiki["description"] if wiki else ""
+            wiki["description"] if wiki else "",
         )
 
         if contradiction_reason:
@@ -244,73 +214,36 @@ async def analyze_text(req: TextRequest):
             explanation = contradiction_reason
             if wiki:
                 sources.append(wiki["url"])
-
         else:
             score = 0
             reasons = []
 
-            # ML
-            if ml_label == "Real":
-                score += 2
-                reasons.append(f"ML model predicts the claim as real ({ml_score}%).")
-            else:
-                score -= 2
-                reasons.append(f"ML model predicts the claim as fake ({ml_score}%).")
+            score += 2 if ml_label == "Real" else -2
+            reasons.append(f"ML model predicts: {ml_label} ({ml_score}%)")
 
-            # AI
-            if ai_result["verdict"] == "TRUE":
-                score += 2
-                reasons.append("AI fact-checking found the claim credible.")
-            else:
-                score -= 1
-                reasons.append("AI fact-checking could not fully verify the claim.")
+            score += 2 if ai_result["verdict"] == "TRUE" else -1
+            reasons.append("AI analysis completed")
 
-            # Wikipedia
             if wiki:
                 score += 2
-                reasons.append("Wikipedia provides supporting information.")
                 sources.append(wiki["url"])
 
-            # News
             if news:
                 score += 1
-                reasons.append("News sources mention related information.")
                 sources.extend(news)
 
-            if score >= 3:
-                verdict = "TRUE"
-            elif score <= -3:
-                verdict = "FALSE"
-            else:
-                verdict = "UNVERIFIED"
-
-            explanation = " ".join(reasons)
-
-    else:
-        verdict = "UNVERIFIED"
-        explanation = "This claim could not be confidently classified."
-
-    # -------------------------------------------------
-    # CONFIDENCE
-    # -------------------------------------------------
+            verdict = "TRUE" if score >= 3 else "FALSE" if score <= -3 else "UNVERIFIED"
+            explanation = " | ".join(reasons)
 
     base_score, breakdown = confidence_breakdown(wiki, news, explanation)
 
     final_score = int(
-        (base_score * 0.4)
+        base_score * 0.4
         + (ml_score * 0.3 if claim_type == "FACT" else 0)
         + (ai_result["credibility_score"] * 0.3 if claim_type == "FACT" else 0)
     )
 
     final_score = min(max(final_score, 0), 100)
-
-    breakdown.update({
-        "ml_prediction": f"{ml_label} ({ml_score}%)" if claim_type == "FACT" else None,
-        "ai_verdict": ai_result["credibility_label"] if claim_type == "FACT" else None,
-        "ai_red_flags": ai_result["red_flags"] if claim_type == "FACT" else []
-    })
-
-    ranked_sources = rank_sources(sources)
 
     highlighted = (
         highlight_incorrect_phrase(req.text, claimed_role.title())
@@ -327,10 +260,9 @@ async def analyze_text(req: TextRequest):
         highlighted_text=highlighted,
         confidence_breakdown=breakdown,
         wikidata_id=wikidata["id"] if isinstance(wikidata, dict) else None,
-        ranked_sources=ranked_sources
+        ranked_sources=rank_sources(sources),
     )
 
-    # -------- SAFE DB INSERT --------
     try:
         await analyses.insert_one(result.model_dump())
     except Exception as e:
@@ -338,10 +270,6 @@ async def analyze_text(req: TextRequest):
 
     return result
 
-
-# -------------------------------------------------
-# FETCH ANALYSIS
-# -------------------------------------------------
 
 @router.get("/{analysis_id}", response_model=AnalysisResult)
 async def get_analysis(analysis_id: str):
