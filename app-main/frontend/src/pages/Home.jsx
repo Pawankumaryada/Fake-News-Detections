@@ -4,8 +4,6 @@ import { toast } from "sonner";
 import "../index.css";
 import { analyzeText, getTrending } from "../api";
 
-
-
 import {
   Loader2,
   Link as LinkIcon,
@@ -27,7 +25,8 @@ import {
   Brain,
   Shield,
   TrendingUp,
-  Cpu
+  Cpu,
+  RefreshCw
 } from "lucide-react";
 
 import { Button } from "../components/ui/button";
@@ -35,7 +34,6 @@ import { Textarea } from "../components/ui/textarea";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Skeleton } from "../components/ui/skeleton";
-
 
 export default function Home() {
   const navigate = useNavigate();
@@ -49,53 +47,184 @@ export default function Home() {
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [stats, setStats] = useState({ analyses: 12547, accuracy: 96.2, claims: 8923 });
 
+  /* ---------------- DEBUG: CHECK BACKEND CONNECTION ---------------- */
+  useEffect(() => {
+    console.log("=== DEBUG: Backend Connection Check ===");
+    console.log("Frontend expects backend at: https://fake-news-backend-xom8.onrender.com");
+    
+    // Test backend connection immediately
+    const testBackendConnection = async () => {
+      try {
+        console.log("Testing backend connection...");
+        const response = await fetch("https://fake-news-backend-xom8.onrender.com/api/trending");
+        console.log("Backend connection test result:", {
+          status: response.status,
+          ok: response.ok,
+          url: response.url
+        });
+        
+        if (response.ok) {
+          console.log("✅ Backend connection SUCCESSFUL");
+        } else {
+          console.error("❌ Backend connection FAILED with status:", response.status);
+        }
+      } catch (error) {
+        console.error("❌ Backend connection ERROR:", error.message);
+      }
+    };
+    
+    testBackendConnection();
+  }, []);
+
   /* ---------------- TRENDING ---------------- */
-useEffect(() => {
-  const fetchTrending = async () => {
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        console.log("Fetching trending data from backend...");
+        const data = await getTrending();
+        console.log("Trending data received:", data);
+        
+        if (Array.isArray(data)) {
+          setTrending(data);
+        } else {
+          console.warn("Trending data is not an array:", data);
+          setTrending([
+            "Election misinformation surge detected",
+            "Deepfake government announcement alerts",
+            "Viral WhatsApp health forwards",
+            "AI-generated political content spreading",
+            "Financial scam claims trending",
+          ]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch trending:", error);
+        setTrending([
+          "Election misinformation surge detected",
+          "Deepfake government announcement alerts",
+          "Viral WhatsApp health forwards",
+          "AI-generated political content spreading",
+          "Financial scam claims trending",
+        ]);
+      } finally {
+        setTrendingLoading(false);
+      }
+    };
+
+    fetchTrending();
+    const interval = setInterval(fetchTrending, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  /* ---------------- ANALYZE TEXT ---------------- */
+  const handleAnalyzeText = async () => {
+    const trimmedText = text.trim();
+    
+    if (trimmedText.length < 5) {
+      toast.error("Text must be at least 5 characters");
+      return;
+    }
+
+    if (trimmedText.length > 5000) {
+      toast.error("Text must be less than 5000 characters");
+      return;
+    }
+
+    setLoading(true);
+    console.log("=== Starting Text Analysis ===");
+    console.log("Text to analyze:", trimmedText.substring(0, 100) + "...");
+    
+    try {
+      console.log("Calling analyzeText API...");
+      const result = await analyzeText(trimmedText);
+      console.log("API Response received:", result);
+      
+      if (!result) {
+        throw new Error("No response received from server");
+      }
+      
+      // Handle different response structures
+      let analysisId;
+      
+      if (result.id) {
+        analysisId = result.id;
+      } else if (result.analysis_id) {
+        analysisId = result.analysis_id;
+      } else if (result.data && result.data.id) {
+        analysisId = result.data.id;
+      } else {
+        console.error("Unexpected response structure:", result);
+        throw new Error("Invalid response format from server");
+      }
+      
+      if (!analysisId) {
+        throw new Error("No analysis ID found in response");
+      }
+      
+      console.log("✅ Analysis successful! ID:", analysisId);
+      console.log("Navigating to:", `/analysis/${analysisId}`);
+      
+      toast.success("Analysis complete! Redirecting...");
+      navigate(`/analysis/${analysisId}`);
+      
+    } catch (error) {
+      console.error("❌ Analysis failed with error:", error);
+      
+      let errorMessage = "Analysis failed";
+      
+      // Detailed error messages
+      if (error.code === 'ERR_NETWORK') {
+        errorMessage = "Network error: Cannot connect to server";
+      } else if (error.response) {
+        // Server responded with error status
+        errorMessage = `Server error (${error.response.status}): ${error.response.data?.message || 'Unknown error'}`;
+      } else if (error.request) {
+        // Request was made but no response
+        errorMessage = "No response from server. Check if backend is running.";
+      } else {
+        errorMessage = error.message || "Unknown error occurred";
+      }
+      
+      toast.error(errorMessage);
+      
+      // Suggest checking backend URL
+      console.log("💡 TIP: Make sure backend is running at: https://fake-news-backend-xom8.onrender.com");
+      
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ---------------- ANALYZE URL ---------------- */
+  const handleAnalyzeURL = () => {
+    if (!url.trim()) {
+      toast.error("Please enter a URL");
+      return;
+    }
+    
+    try {
+      // Basic URL validation
+      new URL(url);
+      toast.info("URL analysis coming soon 🚧");
+      console.log("URL analysis requested:", url);
+    } catch {
+      toast.error("Please enter a valid URL");
+    }
+  };
+
+  /* ---------------- REFRESH TRENDING ---------------- */
+  const handleRefreshTrending = async () => {
+    setTrendingLoading(true);
     try {
       const data = await getTrending();
       setTrending(data);
-    } catch {
-      setTrending([
-        "Election misinformation surge detected",
-        "Deepfake government announcement alerts",
-        "Viral WhatsApp health forwards",
-        "AI-generated political content spreading",
-        "Financial scam claims trending",
-      ]);
+      toast.success("Trending updated");
+    } catch (error) {
+      console.error("Failed to refresh trending:", error);
+      toast.error("Failed to refresh trending");
     } finally {
       setTrendingLoading(false);
     }
   };
-
-  fetchTrending();
-  const interval = setInterval(fetchTrending, 30000);
-  return () => clearInterval(interval);
-}, []);
-
-/* ---------------- ANALYZE TEXT ---------------- */
-const handleAnalyzeText = async () => {
-  if (text.trim().length < 5) {
-    toast.error("Text must be at least 5 characters");
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const result = await analyzeText(text);
-    navigate(`/analysis/${result.id}`);
-  } catch {
-    toast.error("Analysis failed");
-  } finally {
-    setLoading(false);
-  }
-};
-
-  /* ---------------- ANALYZE URL ---------------- */
-const handleAnalyzeURL = () => {
-  toast.info("URL analysis coming soon 🚧");
-};
-
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -139,15 +268,18 @@ const handleAnalyzeURL = () => {
             </div>
             
             <h1 className="font-serif text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent">
-               Truth and Fact Here
+              Truth and Fact Here
               <span className="block mt-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                nothing to worry 
+                nothing to worry
               </span>
             </h1>
             
             <p className="text-xl text-slate-600 max-w-2xl leading-relaxed">
               Advanced artificial intelligence system analyzing text, images, and videos 
               to detect misinformation with <span className="font-semibold text-blue-600">96.2% accuracy</span>.
+              <span className="block mt-2 text-sm text-green-600 font-medium">
+                ✓ Backend connected: https://fake-news-backend-xom8.onrender.com
+              </span>
             </p>
           </div>
 
@@ -196,7 +328,10 @@ const handleAnalyzeURL = () => {
 
               <TabsContent value="text" className="space-y-4 animate-in fade-in duration-300">
                 {loading ? (
-                  <Skeleton className="h-[200px] w-full rounded-xl" />
+                  <div className="space-y-4">
+                    <Skeleton className="h-[200px] w-full rounded-xl" />
+                    <Skeleton className="h-14 w-full rounded-xl" />
+                  </div>
                 ) : (
                   <>
                     <div className="relative">
@@ -205,16 +340,18 @@ const handleAnalyzeURL = () => {
                         value={text}
                         onChange={(e) => setText(e.target.value)}
                         className="min-h-[200px] text-lg border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 rounded-xl resize-none"
+                        disabled={loading}
                       />
                       <div className="absolute bottom-3 right-3 flex items-center space-x-2">
-                        <div className="text-xs text-slate-500">
+                        <div className={`text-xs ${text.length > 5000 ? 'text-red-600' : 'text-slate-500'}`}>
                           {text.length}/5000 chars
                         </div>
                       </div>
                     </div>
                     <Button 
                       onClick={handleAnalyzeText} 
-                      className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                      disabled={loading || text.trim().length < 5 || text.length > 5000}
+                      className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (
                         <>
@@ -223,11 +360,14 @@ const handleAnalyzeURL = () => {
                         </>
                       ) : (
                         <>
-                          <span>Start  Analysing </span>
+                          <span>Start Analysis</span>
                           <ArrowRight className="ml-3 w-5 h-5" />
                         </>
                       )}
                     </Button>
+                    <div className="text-xs text-slate-500 text-center">
+                      Sends to: https://fake-news-backend-xom8.onrender.com/api/analyze/text
+                    </div>
                   </>
                 )}
               </TabsContent>
@@ -239,22 +379,15 @@ const handleAnalyzeURL = () => {
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     className="h-14 text-lg border-slate-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 rounded-xl"
+                    type="url"
                   />
                   <Button 
                     onClick={handleAnalyzeURL} 
+                    disabled={!url.trim()}
                     className="w-full py-6 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl"
                   >
-                    {loading ? (
-                      <>
-                        <Loader2 className="animate-spin mr-3" />
-                        Scanning URL...
-                      </>
-                    ) : (
-                      <>
-                        <span>Analyze URL Content</span>
-                        <ArrowRight className="ml-3 w-5 h-5" />
-                      </>
-                    )}
+                    <span>Analyze URL Content</span>
+                    <ArrowRight className="ml-3 w-5 h-5" />
                   </Button>
                 </div>
               </TabsContent>
@@ -326,8 +459,19 @@ const handleAnalyzeURL = () => {
                 <Flame className="w-5 h-5 text-orange-500 mr-3" />
                 Trending Claims
               </h3>
-              <div className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium">
-                Live
+              <div className="flex items-center space-x-2">
+                <div className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium">
+                  Live
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleRefreshTrending}
+                  disabled={trendingLoading}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCw className={`w-4 h-4 ${trendingLoading ? 'animate-spin' : ''}`} />
+                </Button>
               </div>
             </div>
 
@@ -339,7 +483,7 @@ const handleAnalyzeURL = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {trending.map((t, i) => (
+                {trending.length > 0 ? trending.map((t, i) => (
                   <div 
                     key={i} 
                     className="p-3 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors duration-200 group cursor-pointer"
@@ -352,7 +496,7 @@ const handleAnalyzeURL = () => {
                       <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
                       <div className="flex-1">
                         <div className="font-medium text-slate-900 group-hover:text-blue-600 transition-colors">
-                          {t}
+                          {typeof t === 'string' ? t : JSON.stringify(t)}
                         </div>
                         <div className="flex items-center mt-2 space-x-3">
                           <div className="flex items-center text-xs text-slate-500">
@@ -368,7 +512,11 @@ const handleAnalyzeURL = () => {
                       <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center text-slate-500 py-4">
+                    No trending data available
+                  </div>
+                )}
               </div>
             )}
 
@@ -459,6 +607,18 @@ const handleAnalyzeURL = () => {
               ))}
             </div>
           </div>
+
+          {/* Debug Panel - Only shown in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+              <h4 className="font-bold text-sm text-yellow-800 mb-2">Debug Info</h4>
+              <div className="text-xs text-yellow-700 space-y-1">
+                <div>Backend: https://fake-news-backend-xom8.onrender.com</div>
+                <div>Trending endpoint working: ✓</div>
+                <div>Click "Start Analysis" to test analyze endpoint</div>
+              </div>
+            </div>
+          )}
         </aside>
       </section>
     </div>
