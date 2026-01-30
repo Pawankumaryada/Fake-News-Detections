@@ -3,7 +3,7 @@ import { Target, Users, BarChart3, Shield, Globe, Award, TrendingUp, Heart, Chec
 import axios from "axios";
 import { useState } from "react";
 
-const API = "http://127.0.0.1:8000/api";
+import { getAnalysisById } from "../api";
 
 const About = () => {
 
