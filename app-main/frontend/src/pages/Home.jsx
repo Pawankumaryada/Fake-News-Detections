@@ -93,21 +93,10 @@ const handleAnalyzeText = async () => {
 };
 
   /* ---------------- ANALYZE URL ---------------- */
-const handleAnalyzeURL = async () => {
+const handleAnalyzeURL = () => {
   toast.info("URL analysis coming soon 🚧");
 };
 
-
-    setLoading(true);
-    try {
-      const res = await axios.post(`${API}/analyze/url`, { url });
-      navigate(`/analysis/${res.data.id}`);
-    } catch {
-      toast.error("Analysis failed");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
