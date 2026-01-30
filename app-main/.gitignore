@@ -78,3 +78,8 @@ agenthub/agents/youtube/db
 
 # Mobile development
 android-sdk/ 
+
+# ML / Local training
+ml_env/
+train_model.py
+git_filter_repo_local.py
