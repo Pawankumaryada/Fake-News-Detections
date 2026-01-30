@@ -14,15 +14,15 @@ from backend.core.wikidata import get_wikidata_id
 from backend.core.highlight import highlight_incorrect_phrase
 from backend.core.confidence import confidence_breakdown
 from backend.core.source_rank import rank_sources
-
 from backend.core.ml import analyze_with_ml
 from backend.core.ai import analyze_with_ai
 
 router = APIRouter(prefix="/analyze", tags=["Analyze"])
 
-# -------------------------------------------------
+
+# =================================================
 # MODELS
-# -------------------------------------------------
+# =================================================
 
 class AnalysisResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -48,9 +48,9 @@ class TextRequest(BaseModel):
     text: str
 
 
-# -------------------------------------------------
+# =================================================
 # HELPERS
-# -------------------------------------------------
+# =================================================
 
 def classify_claim_type(text: str) -> str:
     t = text.lower()
@@ -82,7 +82,6 @@ def extract_claimed_role(text: str) -> Optional[str]:
     for role in roles:
         if role in t:
             return role
-
     return None
 
 
@@ -107,6 +106,9 @@ def wikipedia_fact(entity: Optional[str]):
 
 
 def gnews_fact(query: str):
+    if not GNEWS_API_KEY:
+        return []
+
     try:
         res = requests.get(
             "https://gnews.io/api/v4/search",
@@ -123,7 +125,6 @@ def gnews_fact(query: str):
             return []
 
         return [a["url"] for a in res.json().get("articles", [])]
-
     except Exception:
         return []
 
@@ -149,17 +150,17 @@ def contradiction(claimed_role: Optional[str], wiki_desc: str):
     return None
 
 
-# -------------------------------------------------
+# =================================================
 # ANALYZE ENDPOINT
-# -------------------------------------------------
+# =================================================
 
 @router.post("/text", response_model=AnalysisResult)
 async def analyze_text(req: TextRequest):
 
-    if len(req.text.strip()) < 5:
-        raise HTTPException(400, "Text too short")
+    if not req.text or len(req.text.strip()) < 5:
+        raise HTTPException(status_code=400, detail="Text too short")
 
-    # SAFE DEFAULTS
+    # ---------------- SAFE DEFAULTS ----------------
     ml_score = 0
     ml_label = "UNKNOWN"
     ai_result = {
@@ -169,33 +170,41 @@ async def analyze_text(req: TextRequest):
         "red_flags": [],
     }
 
+    verdict = "UNVERIFIED"
+    explanation = None
+    sources: List[str] = []
+
+    # ---------------- CLASSIFICATION ----------------
     claim_type = classify_claim_type(req.text)
 
-    # ENTITY EXTRACTION (FIXED)
+    # ---------------- ENTITY EXTRACTION (FIXED) ----------------
     entities = extract_entities(req.text)
     main_entity = entities[0][0] if entities else None
 
     claimed_role = extract_claimed_role(req.text)
 
-    wiki = wikipedia_fact(main_entity)
+    wiki = wikipedia_fact(main_entity) if main_entity else None
     news = gnews_fact(req.text)
     wikidata = get_wikidata_id(main_entity) if main_entity else None
 
-    sources: List[str] = []
-    explanation = None
-    verdict = "UNVERIFIED"
-
+    # ---------------- DECISION ENGINE ----------------
     if claim_type == "OPINION":
         verdict = "OPINION"
         explanation = "Opinions cannot be fact-checked."
 
     elif claim_type == "PREDICTION":
+        verdict = "UNVERIFIED"
         explanation = "Predictions cannot be verified until the event occurs."
 
     elif claim_type == "FACT":
 
-        ml_score, ml_label = analyze_with_ml(req.text)
+        # ML (safe)
+        try:
+            ml_score, ml_label = analyze_with_ml(req.text)
+        except Exception as e:
+            print("⚠️ ML failed:", e)
 
+        # AI (timeout-safe)
         try:
             ai_result = await asyncio.wait_for(
                 asyncio.to_thread(analyze_with_ai, req.text),
@@ -219,28 +228,31 @@ async def analyze_text(req: TextRequest):
             reasons = []
 
             score += 2 if ml_label == "Real" else -2
-            reasons.append(f"ML model predicts: {ml_label} ({ml_score}%)")
+            reasons.append(f"ML: {ml_label} ({ml_score}%)")
 
-            score += 2 if ai_result["verdict"] == "TRUE" else -1
+            score += 2 if ai_result.get("verdict") == "TRUE" else -1
             reasons.append("AI analysis completed")
 
             if wiki:
                 score += 2
                 sources.append(wiki["url"])
+                reasons.append("Wikipedia supports context")
 
             if news:
                 score += 1
                 sources.extend(news)
+                reasons.append("News sources found")
 
             verdict = "TRUE" if score >= 3 else "FALSE" if score <= -3 else "UNVERIFIED"
             explanation = " | ".join(reasons)
 
+    # ---------------- CONFIDENCE ----------------
     base_score, breakdown = confidence_breakdown(wiki, news, explanation)
 
     final_score = int(
         base_score * 0.4
         + (ml_score * 0.3 if claim_type == "FACT" else 0)
-        + (ai_result["credibility_score"] * 0.3 if claim_type == "FACT" else 0)
+        + (ai_result.get("credibility_score", 50) * 0.3 if claim_type == "FACT" else 0)
     )
 
     final_score = min(max(final_score, 0), 100)
@@ -263,6 +275,7 @@ async def analyze_text(req: TextRequest):
         ranked_sources=rank_sources(sources),
     )
 
+    # ---------------- DB INSERT (SAFE) ----------------
     try:
         await analyses.insert_one(result.model_dump())
     except Exception as e:
@@ -271,13 +284,17 @@ async def analyze_text(req: TextRequest):
     return result
 
 
+# =================================================
+# FETCH ANALYSIS
+# =================================================
+
 @router.get("/{analysis_id}", response_model=AnalysisResult)
 async def get_analysis(analysis_id: str):
 
     doc = await analyses.find_one({"id": analysis_id}, {"_id": 0})
 
     if not doc:
-        raise HTTPException(404, "Analysis not found")
+        raise HTTPException(status_code=404, detail="Analysis not found")
 
     if isinstance(doc.get("timestamp"), str):
         doc["timestamp"] = datetime.fromisoformat(doc["timestamp"])
