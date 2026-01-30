@@ -11,7 +11,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-import { getAnalysisById } from "../api"; // ✅ IMPORTANT
+import { getAnalysisById } from "../api";
 
 /* ---------------- VERDICT UI MAP ---------------- */
 
