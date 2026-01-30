@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 
 import {
   ArrowLeft,
@@ -12,7 +11,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-const API = "https://fake-news-backend-xom8.onrender.com/api";
+import { getAnalysisById } from "../api"; // ✅ IMPORTANT
 
 /* ---------------- VERDICT UI MAP ---------------- */
 
@@ -36,21 +35,21 @@ export default function Analysis() {
 
   useEffect(() => {
     if (!id) return;
-    fetchAnalysis();
-    // eslint-disable-next-line
-  }, [id]);
 
-  const fetchAnalysis = async () => {
-    try {
-      const res = await axios.get(`${API}/analyze/${id}`);
-      setAnalysis(res.data);
-    } catch (err) {
-      console.error("Analysis fetch failed:", err);
-      navigate("/");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchAnalysis = async () => {
+      try {
+        const data = await getAnalysisById(id); // ✅ API layer
+        setAnalysis(data);
+      } catch (err) {
+        console.error("Analysis fetch failed:", err);
+        navigate("/");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalysis();
+  }, [id, navigate]);
 
   /* ---------------- STATES ---------------- */
 
