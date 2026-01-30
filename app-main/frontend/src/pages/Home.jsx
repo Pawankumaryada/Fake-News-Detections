@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { toast } from "sonner";
 import "../index.css";
 import { analyzeText } from "../api";
@@ -36,7 +35,6 @@ import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Skeleton } from "../components/ui/skeleton";
 
-const API = "http://127.0.0.1:8000/api";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -51,46 +49,47 @@ export default function Home() {
   const [stats, setStats] = useState({ analyses: 12547, accuracy: 96.2, claims: 8923 });
 
   /* ---------------- TRENDING ---------------- */
-  useEffect(() => {
-    const fetchTrending = async () => {
-      try {
-        const res = await axios.get(`${API}/trending`);
-        setTrending(res.data);
-      } catch {
-        setTrending([
-          "Election misinformation surge detected",
-          "Deepfake government announcement alerts",
-          "Viral WhatsApp health forwards",
-          "AI-generated political content spreading",
-          "Financial scam claims trending"
-        ]);
-      } finally {
-        setTrendingLoading(false);
-      }
-    };
-
-    fetchTrending();
-    const interval = setInterval(fetchTrending, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  /* ---------------- ANALYZE TEXT ---------------- */
-  const handleAnalyzeText = async () => {
-    if (text.trim().length < 5) {
-      toast.error("Text must be at least 5 characters");
-      return;
-    }
-
-    setLoading(true);
+/* ---------------- TRENDING ---------------- */
+useEffect(() => {
+  const fetchTrending = async () => {
     try {
-      const res = await axios.post(`${API}/analyze/text`, { text });
-      navigate(`/analysis/${res.data.id}`);
-    } catch (e) {
-      toast.error("Analysis failed");
+      const data = await getTrending();
+      setTrending(data);
+    } catch {
+      setTrending([
+        "Election misinformation surge detected",
+        "Deepfake government announcement alerts",
+        "Viral WhatsApp health forwards",
+        "AI-generated political content spreading",
+        "Financial scam claims trending",
+      ]);
     } finally {
-      setLoading(false);
+      setTrendingLoading(false);
     }
   };
+
+  fetchTrending();
+  const interval = setInterval(fetchTrending, 30000);
+  return () => clearInterval(interval);
+}, []);
+
+/* ---------------- ANALYZE TEXT ---------------- */
+const handleAnalyzeText = async () => {
+  if (text.trim().length < 5) {
+    toast.error("Text must be at least 5 characters");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const result = await analyzeText(text);
+    navigate(`/analysis/${result.id}`);
+  } catch (e) {
+    toast.error("Analysis failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   /* ---------------- ANALYZE URL ---------------- */
   const handleAnalyzeURL = async () => {
