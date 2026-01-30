@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import "../index.css";
-import { analyzeText } from "../api";
+import { analyzeText, getTrending } from "../api";
+
 
 
 import {
@@ -92,11 +93,10 @@ const handleAnalyzeText = async () => {
 };
 
   /* ---------------- ANALYZE URL ---------------- */
-  const handleAnalyzeURL = async () => {
-    if (!url) {
-      toast.error("Enter a valid URL");
-      return;
-    }
+const handleAnalyzeURL = async () => {
+  toast.info("URL analysis coming soon 🚧");
+};
+
 
     setLoading(true);
     try {
