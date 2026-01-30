@@ -10,15 +10,11 @@ if not os.path.exists(MODEL_PATH):
 model = joblib.load(MODEL_PATH)
 
 def analyze_with_ml(text: str):
-    """
-    Returns:
-    - confidence score (0–100)
-    - label ("Real" or "Fake")
-    """
-    proba = model.predict_proba([text])[0]
-    prediction = model.predict([text])[0]
-
-    confidence = int(max(proba) * 100)
-    label = "Fake" if prediction == 1 else "Real"
-
-    return confidence, label
+    try:
+        proba = model.predict_proba([text])[0]
+        score = int(max(proba) * 100)
+        label = "Real" if proba[1] > proba[0] else "Fake"
+        return score, label
+    except Exception as e:
+        print("⚠️ ML DISABLED:", e)
+        return 50, "UNKNOWN"
