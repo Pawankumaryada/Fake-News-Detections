@@ -2,11 +2,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# --- ROUTERS (SAFE IMPORTS) ---
+# -------------------------------------------------
+# ROUTERS (SAFE IMPORTS)
+# -------------------------------------------------
 
 from backend.routes.analyze import router as analyze_router
 
-# Optional routers (may fail if DB not ready)
 optional_routers = []
 
 try:
@@ -46,14 +47,19 @@ except Exception as e:
     print("⚠️ facts router disabled:", e)
 
 
-# --- APP INIT ---
+# -------------------------------------------------
+# APP INIT
+# -------------------------------------------------
 
 app = FastAPI(
     title="Veritas AI Backend",
     version="1.0.0"
 )
 
-# --- GLOBAL ERROR HANDLER (PREVENTS 500 BLANKS) ---
+
+# -------------------------------------------------
+# GLOBAL ERROR HANDLER (PREVENT BLANK 500s)
+# -------------------------------------------------
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -67,14 +73,24 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# --- CORS ---
+# -------------------------------------------------
+# CORS (🔥 FIXED – VERY IMPORTANT)
+# -------------------------------------------------
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+
+        # OLD VERCEL
         "https://fake-news-detections-iota.vercel.app",
+
+        # ✅ CURRENT VERCEL (from your screenshot)
+        "https://fake-news-detections-mn3srsw4j-pawankumaryadas-projects.vercel.app",
+
+        # FUTURE-SAFE (optional)
+        "https://fake-news-detections.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -82,7 +98,9 @@ app.add_middleware(
 )
 
 
-# --- ROUTES ---
+# -------------------------------------------------
+# ROUTES
+# -------------------------------------------------
 
 app.include_router(analyze_router, prefix="/api")
 
@@ -90,7 +108,9 @@ for router in optional_routers:
     app.include_router(router, prefix="/api")
 
 
-# --- HEALTH CHECK ---
+# -------------------------------------------------
+# HEALTH CHECK
+# -------------------------------------------------
 
 @app.get("/api/health")
 def health():
