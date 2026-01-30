@@ -1,5 +1,6 @@
 import uuid
 import requests
+import asyncio
 from datetime import datetime, timezone
 from typing import List, Optional, Dict
 
@@ -171,6 +172,7 @@ def contradiction(claimed_role: Optional[str], wiki_desc: str):
 
 @router.post("/text", response_model=AnalysisResult)
 async def analyze_text(req: TextRequest):
+
     if len(req.text.strip()) < 5:
         raise HTTPException(400, "Text too short")
 
@@ -192,7 +194,19 @@ async def analyze_text(req: TextRequest):
     explanation: Optional[str] = None
     verdict = "UNVERIFIED"
 
-    # -------- DECISION ENGINE --------
+    ml_score = 0
+    ml_label = "UNKNOWN"
+
+    ai_result = {
+        "verdict": "UNVERIFIED",
+        "credibility_score": 50,
+        "credibility_label": "SKIPPED",
+        "red_flags": []
+    }
+
+    # -------------------------------------------------
+    # DECISION ENGINE
+    # -------------------------------------------------
 
     if claim_type == "OPINION":
         verdict = "OPINION"
@@ -203,15 +217,28 @@ async def analyze_text(req: TextRequest):
         explanation = "Predictions cannot be verified until the event occurs."
 
     elif claim_type == "FACT":
+
+        # -------- ML --------
         ml_score, ml_label = analyze_with_ml(req.text)
-        ai_result = analyze_with_ai(req.text)
+
+        # -------- AI (SAFE + TIMEOUT) --------
+        try:
+            ai_result = await asyncio.wait_for(
+                asyncio.to_thread(analyze_with_ai, req.text),
+                timeout=8
+            )
+
+            if not isinstance(ai_result, dict):
+                raise ValueError("Invalid AI response")
+
+        except Exception as e:
+            print("⚠️ AI skipped:", e)
 
         contradiction_reason = contradiction(
             claimed_role,
             wiki["description"] if wiki else ""
         )
 
-        # 🚨 HARD CONTRADICTION OVERRIDE
         if contradiction_reason:
             verdict = "FALSE"
             explanation = contradiction_reason
@@ -235,13 +262,13 @@ async def analyze_text(req: TextRequest):
                 score += 2
                 reasons.append("AI fact-checking found the claim credible.")
             else:
-                score -= 3
-                reasons.append("AI fact-checking identified credibility issues.")
+                score -= 1
+                reasons.append("AI fact-checking could not fully verify the claim.")
 
             # Wikipedia
             if wiki:
                 score += 2
-                reasons.append("Wikipedia provides supporting background information.")
+                reasons.append("Wikipedia provides supporting information.")
                 sources.append(wiki["url"])
 
             # News
@@ -263,14 +290,18 @@ async def analyze_text(req: TextRequest):
         verdict = "UNVERIFIED"
         explanation = "This claim could not be confidently classified."
 
-    # -------- CONFIDENCE --------
+    # -------------------------------------------------
+    # CONFIDENCE
+    # -------------------------------------------------
+
     base_score, breakdown = confidence_breakdown(wiki, news, explanation)
 
     final_score = int(
-        (base_score * 0.4) +
-        (ml_score * 0.3 if claim_type == "FACT" else 0) +
-        (ai_result["credibility_score"] * 0.3 if claim_type == "FACT" else 0)
+        (base_score * 0.4)
+        + (ml_score * 0.3 if claim_type == "FACT" else 0)
+        + (ai_result["credibility_score"] * 0.3 if claim_type == "FACT" else 0)
     )
+
     final_score = min(max(final_score, 0), 100)
 
     breakdown.update({
@@ -299,7 +330,12 @@ async def analyze_text(req: TextRequest):
         ranked_sources=ranked_sources
     )
 
-    await analyses.insert_one(result.model_dump())
+    # -------- SAFE DB INSERT --------
+    try:
+        await analyses.insert_one(result.model_dump())
+    except Exception as e:
+        print("⚠️ Mongo insert failed:", e)
+
     return result
 
 
@@ -309,7 +345,9 @@ async def analyze_text(req: TextRequest):
 
 @router.get("/{analysis_id}", response_model=AnalysisResult)
 async def get_analysis(analysis_id: str):
+
     doc = await analyses.find_one({"id": analysis_id}, {"_id": 0})
+
     if not doc:
         raise HTTPException(404, "Analysis not found")
 
