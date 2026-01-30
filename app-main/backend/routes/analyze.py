@@ -154,25 +154,12 @@ def contradiction(claimed_role: Optional[str], wiki_desc: str):
 # ANALYZE ENDPOINT
 # =================================================
 
-@router.post("/text", response_model=AnalysisResult)
+@router.post("/text")
 async def analyze_text(req: TextRequest):
-
-    if not req.text or len(req.text.strip()) < 5:
-        raise HTTPException(status_code=400, detail="Text too short")
-
-    # ---------------- SAFE DEFAULTS ----------------
-    ml_score = 0
-    ml_label = "UNKNOWN"
-    ai_result = {
-        "verdict": "UNVERIFIED",
-        "credibility_score": 50,
-        "credibility_label": "SKIPPED",
-        "red_flags": [],
+    return {
+        "ok": True,
+        "received_text": req.text
     }
-
-    verdict = "UNVERIFIED"
-    explanation = None
-    sources: List[str] = []
 
     # ---------------- CLASSIFICATION ----------------
     claim_type = classify_claim_type(req.text)
