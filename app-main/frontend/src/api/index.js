@@ -10,15 +10,15 @@ export async function analyzeText(text) {
   return res.data;
 }
 
-/* TRENDING */
-export async function getTrending() {
-  const res = await api.get("/api/trending");
+/* GET ANALYSIS */
+export async function getAnalysisById(id) {
+  const res = await api.get(`/api/analyze/${id}`);
   return res.data;
 }
 
-/* FETCH BY ID */
-export async function getAnalysisById(id) {
-  const res = await api.get(`/api/analyze/${id}`);
+/* TRENDING */
+export async function getTrending() {
+  const res = await api.get("/api/trending");
   return res.data;
 }
 
