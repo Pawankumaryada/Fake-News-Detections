@@ -90,3 +90,7 @@
     "tailwindcss": "^3.4.17"
   }
 }
+{
+  "proxy": "https://fake-news-backend-xom8.onrender.com"
+ 
+}
