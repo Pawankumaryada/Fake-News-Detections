@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import "../index.css";
+import { analyzeText } from "../api";
+
 
 import {
   Loader2,
