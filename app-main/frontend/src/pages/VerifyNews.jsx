@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 
-const API_BASE = "http://127.0.0.1:8000"; // your backend
+const API_BASE = "https://fake-news-backend-xom8.onrender.com"; // your backend
 
 export default function VerifyNews() {
   const [text, setText] = useState("");
