@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-const API = "http://127.0.0.1:8000/api";
+const API = "https://fake-news-backend-xom8.onrender.com/api";
 
 /* ---------------- VERDICT UI MAP ---------------- */
 
