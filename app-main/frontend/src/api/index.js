@@ -8,6 +8,5 @@ const api = axios.create({
 
 export default api;
 
-/* 🔥 RE-EXPORT ALL API MODULES 🔥 */
-export * from "./text";
-export * from "./gnews";
+/* ✅ NAMED EXPORTS (CRITICAL) */
+export { analyzeText, getAnalysisById } from "./text";
