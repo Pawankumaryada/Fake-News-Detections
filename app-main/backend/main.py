@@ -20,12 +20,13 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://fake-news-detections-iota.vercel.app/"
+        "https://fake-news-detections-iota.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ROUTES
 app.include_router(analyze_router, prefix="/api")
