@@ -28,7 +28,7 @@ const Login = () => {
 
     try {
       // Replace with your actual API endpoint
-      const response = await axios.post('http://localhost:8000/api/auth/login', formData);
+      const response = await axios.post('https://fake-news-backend-xom8.onrender.com/api/auth/login', formData);
       
       if (response.data.success) {
         const { token, user } = response.data;
