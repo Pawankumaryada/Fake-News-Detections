@@ -1,24 +1,24 @@
-import re
 import joblib
-from pathlib import Path
-from backend.core.config import logger
+import os
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-ML_DIR = ROOT_DIR / "ml"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(BASE_DIR, "models", "fake_news_model.joblib")
 
-model = joblib.load(ML_DIR / "fake_news_model.pkl")
-vectorizer = joblib.load(ML_DIR / "vectorizer.pkl")
-logger.info("✅ ML model & vectorizer loaded")
+if not os.path.exists(MODEL_PATH):
+    raise RuntimeError("ML model file missing")
 
-def clean_text(text: str) -> str:
-    text = text.lower()
-    text = re.sub(r"http\S+", "", text)
-    text = re.sub(r"[^a-z\s]", "", text)
-    return text
+model = joblib.load(MODEL_PATH)
 
 def analyze_with_ml(text: str):
-    vec = vectorizer.transform([clean_text(text)])
-    prob_real = model.predict_proba(vec)[0][1]
-    score = int(prob_real * 100)
-    label = "Real" if score >= 50 else "Fake"
-    return score, label
+    """
+    Returns:
+    - confidence score (0–100)
+    - label ("Real" or "Fake")
+    """
+    proba = model.predict_proba([text])[0]
+    prediction = model.predict([text])[0]
+
+    confidence = int(max(proba) * 100)
+    label = "Fake" if prediction == 1 else "Real"
+
+    return confidence, label
