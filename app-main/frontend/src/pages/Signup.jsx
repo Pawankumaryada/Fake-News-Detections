@@ -47,7 +47,7 @@ const Signup = () => {
 
     try {
       // Replace with your actual API endpoint
-      const response = await axios.post('http://localhost:8000/api/auth/register', {
+      const response = await axios.post('https://fake-news-backend-xom8.onrender.com/api/auth/register', {
         name: formData.name,
         email: formData.email,
         password: formData.password
