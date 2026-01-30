@@ -8,9 +8,8 @@ MONGO_CLUSTER = os.getenv("MONGO_CLUSTER")
 MONGO_DB = os.getenv("MONGO_DB", "veritas_db")
 
 if not all([MONGO_USERNAME, MONGO_PASSWORD, MONGO_CLUSTER]):
-    raise RuntimeError("❌ MongoDB environment variables not set")
+    raise RuntimeError("MongoDB environment variables missing")
 
-# Encode credentials safely
 username = quote_plus(MONGO_USERNAME)
 password = quote_plus(MONGO_PASSWORD)
 
@@ -24,8 +23,10 @@ print("✅ Mongo URL built (credentials hidden)")
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[MONGO_DB]
 
-# ✅ COLLECTIONS (THIS WAS MISSING)
 analyses = db["analyses"]
 users = db["users"]
-feedback = db["feedback"]
 history = db["history"]
+feedback = db["feedback"]
+facts = db["facts"]
+trending = db["trending"]
+admin_logs = db["admin_logs"]
