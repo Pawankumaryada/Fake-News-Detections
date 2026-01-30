@@ -154,12 +154,31 @@ def contradiction(claimed_role: Optional[str], wiki_desc: str):
 # ANALYZE ENDPOINT
 # =================================================
 
-@router.post("/text")
+@router.post("/text", response_model=AnalysisResult)
 async def analyze_text(req: TextRequest):
-    return {
-        "ok": True,
-        "received_text": req.text
-    }
+    # 1. Validate
+    if len(req.text.strip()) < 5:
+        raise HTTPException(400, "Text too short")
+
+    # 2. Run ML
+    ml_score, ml_label = analyze_with_ml(req.text)
+
+    # 3. Build response
+    result = AnalysisResult(
+        input_text=req.text,
+        claim_type="FACT",
+        final_label="TRUE",
+        final_score=ml_score,
+        explanation="ML model analysis completed",
+        confidence_breakdown={},
+        ranked_sources=[]
+    )
+
+    # 4. Save to Mongo
+    await analyses.insert_one(result.model_dump())
+
+    return result
+
 
     # ---------------- CLASSIFICATION ----------------
     claim_type = classify_claim_type(req.text)
